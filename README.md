@@ -5,7 +5,7 @@ A deep learning model that classifies wine types (red, white, rosé) from bottle
 ## 🌟 Features
 
 - **Easy to use**: Simple Python interface
-- **Multiple models**: ResNet18, ResNet50, EfficientNet support
+- **Multiple models**: ResNet50, EfficientNet support
 - **Visual results**: Training graphs and metrics
 - **Ready for deployment**: Save/Load model functionality
 
