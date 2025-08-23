@@ -21,7 +21,7 @@ The dataset is available on Google Drive:
 Use a `Data_scraping.ipynb` file:
 
 # Your dataset should be at:
-# /content/drive/MyDrive/Wine_Data/Data/
+ /content/drive/MyDrive/Wine_Data/Data/
 
 ## 🚀 Quick Start
 
