@@ -25,23 +25,20 @@ def get_transforms(augment=False):
     ]
     return transforms.Compose(base_transforms)
 
-# Load model with proper handling
+# Load model
 def load_model(model_path):
     print(f"Loading model from: {model_path}")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
     try:
-        # Load the entire saved state
         checkpoint = torch.load(model_path, map_location=device, weights_only=True)
         print("Checkpoint loaded successfully")
         
-        # Use ResNet50 with 10 output classes
         model = models.resnet50(weights=None)
         num_ftrs = model.fc.in_features
-        model.fc = torch.nn.Linear(num_ftrs, 10)  # 10 classes
+        model.fc = torch.nn.Linear(num_ftrs, 10)
         
-        # Load the state dict
         model.load_state_dict(checkpoint)
         model.to(device)
         model.eval()
@@ -49,7 +46,7 @@ def load_model(model_path):
         print("✅ ResNet50 model loaded successfully!")
         print(f"Model has {num_ftrs} features and 10 output classes")
         
-        # Your actual class names
+        # Class names
         class_names = [
             'Red', 'White', 'Rose', 'Specialty', 'Sparkling',
             'Sake_Rice_wine', 'Icewine', 'Fortified', 'Dessert', 'Champagne'
@@ -61,7 +58,6 @@ def load_model(model_path):
         print(f"❌ Model loading failed: {e}")
         raise e
     
-# Load model first to check if it works
 try:
     model, device, CLASS_NAMES = load_model('best_model.pth')
     transform = get_transforms(augment=False)
@@ -70,7 +66,6 @@ except Exception as e:
     print(f"Failed to initialize model: {e}")
     exit()
 
-# Prediction function
 def predict_wine(image):
     try:
         if isinstance(image, bytes):
@@ -95,7 +90,7 @@ def predict_wine(image):
         print(f"Prediction error: {e}")
         return None
 
-# Telegram bot handlers
+# Telegram bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("Start command received")
     await update.message.reply_text(
@@ -115,7 +110,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Make prediction
         result = predict_wine(bytes(photo_bytes))
         
-        # In the handle_photo function, replace the response part:
         if result:
             response = (
                 f"🍷 **Wine Classification Result:**\n\n"
@@ -131,7 +125,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for i, (class_name, prob) in enumerate(all_probs[:3]):
                 response += f"{i+1}. {class_name}: {prob:.2%}\n"
             
-            # Add emoji based on wine type
             predicted_class = result['predicted_class'].lower()
             if predicted_class == 'red':
                 response += "\n🍇 **Category:** Red Wine"
@@ -163,19 +156,15 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Something went wrong!")
 
 def main():
-    # Replace with your actual bot token
-    TOKEN = "8357680328:AAED3VVJ84kIrJAP2hhbm7JcT_UWaghA5js"  # Your actual token
+    TOKEN = "8357680328:AAED3VVJ84kIrJAP2hhbm7JcT_UWaghA5js"
     
-    # Check if the token is still the placeholder (not your actual token)
     if TOKEN == "YOUR_BOT_TOKEN_HERE":
-        print("❌ ERROR: Please replace 'YOUR_BOT_TOKEN_HERE' with your actual Telegram bot token!")
-        print("Get your token from @BotFather on Telegram")
+        print("❌ ERROR: Please add Telegram bot token!")
         return
     
     print("Creating application...")
     application = Application.builder().token(TOKEN).build()
     
-    # Add handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_error_handler(error_handler)
