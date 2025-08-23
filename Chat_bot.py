@@ -7,15 +7,14 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import numpy as np
 import logging
+import random
 
-# Set up logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Define transforms
 def get_transforms(augment=False):
     base_transforms = [
         transforms.Resize((224, 224)),
@@ -25,7 +24,6 @@ def get_transforms(augment=False):
     ]
     return transforms.Compose(base_transforms)
 
-# Load model
 def load_model(model_path):
     print(f"Loading model from: {model_path}")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,7 +44,6 @@ def load_model(model_path):
         print("✅ ResNet50 model loaded successfully!")
         print(f"Model has {num_ftrs} features and 10 output classes")
         
-        # Class names
         class_names = [
             'Red', 'White', 'Rose', 'Specialty', 'Sparkling',
             'Sake_Rice_wine', 'Icewine', 'Fortified', 'Dessert', 'Champagne'
@@ -90,27 +87,92 @@ def predict_wine(image):
         print(f"Prediction error: {e}")
         return None
 
+# Welcome messages
+WELCOME_MESSAGES = [
+    "Hello! I'm your wine expert bot 🍷",
+    "Hi there! I can help identify wine types from photos",
+    "Greetings! Send me a wine photo and I'll tell you what type it is",
+    "Welcome! I'm a wine classification bot ready to analyze your photos"
+]
+
+# Response messages
+RESPONSE_INTROS = [
+    "Let me analyze this wine...",
+    "Examining your wine photo...",
+    "Taking a closer look at this...",
+    "Analyzing the color and characteristics..."
+]
+
 # Telegram bot
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("Start command received")
+    welcome = random.choice(WELCOME_MESSAGES)
     await update.message.reply_text(
+        f"{welcome}\n\n"
         "🍷 **Wine Classifier Bot**\n\n"
-        "Send me a photo of wine and I'll classify it!\n"
-        "I can identify 10 different wine types including red, white, and rosé varieties."
+        "Simply send me a clear photo of wine and I'll classify it for you!\n"
+        "I can identify 10 different wine types including:\n"
+        "• Red, White, and Rosé wines\n"
+        "• Sparkling wines and Champagne\n"
+        "• Dessert and Fortified wines\n"
+        "• Sake/Rice wine and more!\n\n"
+        "Just send a photo to get started! 📸"
     )
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = (
+        "🤖 **How to use the Wine Classifier Bot:**\n\n"
+        "1. Take a clear photo of the wine you want to identify\n"
+        "2. Make sure the wine is well-lit and visible\n"
+        "3. Send the photo to me\n"
+        "4. I'll analyze it and tell you what type of wine it is!\n\n"
+        "I can identify 10 different wine types with my AI model.\n\n"
+        "Just send a photo whenever you're ready!"
+    )
+    await update.message.reply_text(help_text, parse_mode='Markdown')
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_message = update.message.text.lower()
+    
+    greetings = ['hi', 'hello', 'hey', 'hola', 'greetings']
+    thanks = ['thanks', 'thank you', 'thx', 'ty']
+    
+    if any(word in user_message for word in greetings):
+        await update.message.reply_text(
+            f"{random.choice(WELCOME_MESSAGES)} Send me a wine photo to get started! 📸"
+        )
+    elif any(word in user_message for word in thanks):
+        await update.message.reply_text(
+            "You're welcome! 🍷 Feel free to send more wine photos anytime!"
+        )
+    elif 'what can you do' in user_message or 'how do you work' in user_message:
+        await help_command(update, context)
+    else:
+        await update.message.reply_text(
+            "I'm a wine classification bot! 🍷\n\n"
+            "Send me a photo of wine and I'll tell you what type it is. "
+            "Or use /help to see how I work!"
+        )
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("Photo received!")
     try:
-        # Get the photo
+        processing_msg = await update.message.reply_text(
+            f"{random.choice(RESPONSE_INTROS)} 🔍"
+        )
+        
         photo_file = await update.message.photo[-1].get_file()
         photo_bytes = await photo_file.download_as_bytearray()
         print(f"Photo downloaded: {len(photo_bytes)} bytes")
         
-        # Make prediction
         result = predict_wine(bytes(photo_bytes))
         
         if result:
+            await context.bot.delete_message(
+                chat_id=update.message.chat_id,
+                message_id=processing_msg.message_id
+            )
+            
             response = (
                 f"🍷 **Wine Classification Result:**\n\n"
                 f"**Predicted Type:** {result['predicted_class']}\n"
@@ -118,7 +180,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"**Top 3 Predictions:**\n"
             )
             
-            # Get top 3 predictions
             all_probs = list(zip(CLASS_NAMES, result['all_confidences']))
             all_probs.sort(key=lambda x: x[1], reverse=True)
             
@@ -127,33 +188,42 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             predicted_class = result['predicted_class'].lower()
             if predicted_class == 'red':
-                response += "\n🍇 **Category:** Red Wine"
+                response += "\n🍇 **Red Wine** - Known for bold flavors and darker color from extended grape skin contact during fermentation."
             elif predicted_class == 'white':
-                response += "\n🥂 **Category:** White Wine"  
+                response += "\n🥂 **White Wine** - Typically lighter, crisper, and made from green or yellow-colored grapes."  
             elif predicted_class == 'rose':
-                response += "\n🌹 **Category:** Rosé Wine"
-            elif predicted_class == 'sparkling' or predicted_class == 'champagne':
-                response += "\n✨ **Category:** Sparkling Wine"
-            elif predicted_class == 'dessert' or predicted_class == 'icewine':
-                response += "\n🍰 **Category:** Dessert Wine"
+                response += "\n🌹 **Rosé Wine** - Gets its pink color from limited skin contact with red grapes, offering a middle ground between red and white."
+            elif predicted_class == 'sparkling':
+                response += "\n✨ **Sparkling Wine** - Contains significant levels of carbon dioxide, making it fizzy."
+            elif predicted_class == 'champagne':
+                response += "\n🍾 **Champagne** - A specific type of sparkling wine from the Champagne region of France."
+            elif predicted_class == 'dessert':
+                response += "\n🍰 **Dessert Wine** - Sweet wines typically served with dessert."
+            elif predicted_class == 'icewine':
+                response += "\n❄️ **Icewine** - A type of dessert wine produced from grapes that have been frozen while still on the vine."
             elif predicted_class == 'fortified':
-                response += "\n⚡ **Category:** Fortified Wine"
+                response += "\n⚡ **Fortified Wine** - Wine to which a distilled spirit (like brandy) has been added."
             elif predicted_class == 'sake_rice_wine':
-                response += "\n🍶 **Category:** Sake/Rice Wine"
+                response += "\n🍶 **Sake/Rice Wine** - A Japanese alcoholic beverage made by fermenting rice."
             else:
-                response += "\n🎯 **Category:** Specialty Wine"
+                response += "\n🎯 **Specialty Wine** - A unique or specialty wine variety."
             
             await update.message.reply_text(response, parse_mode='Markdown')
             print(f"Prediction sent: {result['predicted_class']}")
             
     except Exception as e:
         print(f"Error in handle_photo: {e}")
-        await update.message.reply_text("❌ Error processing image. Please try another photo.")
+        await update.message.reply_text(
+            "❌ Sorry, I had trouble processing that image.\n\n"
+            "Please try again with a clearer photo of the wine, preferably in good lighting. 📸"
+        )
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"Error: {context.error}")
     if update:
-        await update.message.reply_text("❌ Something went wrong!")
+        await update.message.reply_text(
+            "❌ Something went wrong! Please try again or send a different photo."
+        )
 
 def main():
     TOKEN = "8357680328:AAED3VVJ84kIrJAP2hhbm7JcT_UWaghA5js"
@@ -165,7 +235,10 @@ def main():
     print("Creating application...")
     application = Application.builder().token(TOKEN).build()
     
+    # Add handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_error_handler(error_handler)
     
