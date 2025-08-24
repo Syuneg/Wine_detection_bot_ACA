@@ -2,6 +2,10 @@
 
 A deep learning model that classifies wine types (red, white, rosé) from bottle images using PyTorch and transfer learning.
 
+## Presentation 
+
+**🔗 (https://www.canva.com/design/DAGw7YQ--cM/_M5bAthZ9_NjZqrBJChj4g/edit?utm_content=DAGw7YQ--cM&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)**
+
 ## 🌟 Features
 
 - **Easy to use**: Simple Python interface
